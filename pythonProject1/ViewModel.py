@@ -5,9 +5,10 @@ import psycopg2
 from config import host, user, password, db_name
 
 
-# Подключение к бд
-def save_testcase():
+# Сохранение кейса в бд
+def save_testcase(name, description, steps):
     try:
+        # Подключение к базе данных
         con = psycopg2.connect(
             host=host,
             user=user,
@@ -15,18 +16,30 @@ def save_testcase():
             database=db_name
         )
         with con.cursor() as cursor:
+            # Вставка тесткейса и получение его id
             cursor.execute(
-                "INSERT INTO ;"
+                "INSERT INTO testcases (name, description, created_at, uploadet_at) VALUES (%s, %s, %s, %s) RETURNING "
+                "id_case",
+                (name, description, datetime.now(), datetime.now())
             )
+            testcase_id = cursor.fetchone()[0]
 
+            # Вставка шагов тесткейса
+            for step_number, (action_description, expected_result) in enumerate(steps, start=1):
+                cursor.execute(
+                    "INSERT INTO testcase_steps (stepnumber, actiondescription, expectedresult, testcaseid) VALUES ("
+                    "%s, %s, %s, %s)",
+                    (step_number, action_description, expected_result, testcase_id)
+                )
 
+            con.commit()
+        print("[INFO] Testcase and steps saved successfully")
     except Exception as _ex:
         print("[INFO] Error while working with PostgreSQL", _ex)
     finally:
         if con:
-            cursor.close()
             con.close()
-            print("[INFO] PorstgreSQL connection closed")
+            print("[INFO] PostgreSQL connection closed")
 
 
 # Функция для обработки данных формы создания кейсов
